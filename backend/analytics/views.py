@@ -1,33 +1,30 @@
-from accounts.models import StudentProfile
-from schools.models import Course
+from rest_framework.decorators import api_view, permission_classes
+from rest_framework.permissions import IsAuthenticated
+from rest_framework.response import Response
 
-def get_student_dashboard(student):
-    data = []
-    enrollments = student.enrollments.all()
-    for e in enrollments:
-        course = e.course
-        attendance_percent = student.get_attendance_percentage(course)
-        eligibility = student.is_eligible(course)
-        data.append({
-            'course_code': course.course_code,
-            'course_title': course.course_title,
-            'attendance_percent': attendance_percent,
-            'eligible': eligibility
-        })
-    return data
+from .serializers import (
+    StudentDashboardSerializer,
+    LecturerDashboardSerializer
+)
+from .services import (
+    get_student_dashboard,
+    get_lecturer_dashboard
+)
 
-def get_lecturer_dashboard(lecturer):
-    courses = lecturer.assigned_courses.all()
-    data = []
-    for course in courses:
-        total_classes_set = course.total_classes_set
-        classes_held = course.classes_held()
-        completion = course.completion_percentage()
-        data.append({
-            'course_code': course.course_code,
-            'course_title': course.course_title,
-            'total_classes_set': total_classes_set,
-            'classes_held': classes_held,
-            'completion_percent': completion
-        })
-    return data
+
+@api_view(['GET'])
+@permission_classes([IsAuthenticated])
+def student_dashboard(request):
+    student = request.user.studentprofile
+    data = get_student_dashboard(student)
+    serializer = StudentDashboardSerializer(data, many=True)
+    return Response(serializer.data)
+
+
+@api_view(['GET'])
+@permission_classes([IsAuthenticated])
+def lecturer_dashboard(request):
+    lecturer = request.user.lecturerprofile
+    data = get_lecturer_dashboard(lecturer)
+    serializer = LecturerDashboardSerializer(data, many=True)
+    return Response(serializer.data)
