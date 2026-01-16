@@ -14,3 +14,11 @@ class LecturerDashboardSerializer(serializers.Serializer):
     total_classes_set = serializers.IntegerField()
     classes_held = serializers.IntegerField()
     completion_percent = serializers.FloatField()
+    
+class LecturerComplianceSerializer(serializers.Serializer):
+    lecturer_name = serializers.CharField()
+    course_code = serializers.CharField()
+    course_title = serializers.CharField()
+    total_classes_set = serializers.IntegerField()
+    classes_held = serializers.IntegerField()
+    completion_percent = serializers.FloatField()

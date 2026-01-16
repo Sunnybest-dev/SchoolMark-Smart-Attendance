@@ -1,12 +1,13 @@
 from accounts.models import StudentProfile
-from schools.models import Course
+from attendance.services import get_attendance_percentage
 
 def get_student_dashboard(student):
+    """Return list of courses, attendance %, eligibility for student"""
     data = []
     enrollments = student.enrollments.all()
     for e in enrollments:
         course = e.course
-        attendance_percent = student.get_attendance_percentage(course)
+        attendance_percent = get_attendance_percentage(student, course)
         eligibility = student.is_eligible(course)
         data.append({
             'course_code': course.course_code,
@@ -16,7 +17,9 @@ def get_student_dashboard(student):
         })
     return data
 
+
 def get_lecturer_dashboard(lecturer):
+    """Return courses and completion stats for lecturer"""
     courses = lecturer.assigned_courses.all()
     data = []
     for course in courses:

@@ -59,3 +59,15 @@ def completion_percentage(self):
     if self.total_classes_set == 0:
         return 0
     return round((self.classes_held() / self.total_classes_set) * 100, 2)
+
+class AttendanceControl(models.Model):
+    school = models.OneToOneField(
+        School,
+        on_delete=models.CASCADE,
+        related_name='attendance_control'
+    )
+    attendance_locked = models.BooleanField(default=False)
+    locked_at = models.DateTimeField(null=True, blank=True)
+
+    def __str__(self):
+        return f"{self.school.name} - Attendance Control"
