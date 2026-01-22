@@ -7,14 +7,20 @@ class AttendanceSession(models.Model):
     course = models.ForeignKey(Course, on_delete=models.CASCADE, related_name='attendance_sessions')
     session_pin = models.CharField(max_length=6)
     session_qr = models.ImageField(upload_to='qr_codes/', blank=True, null=True)
+
     date = models.DateField(auto_now_add=True)
     start_time = models.TimeField()
     end_time = models.TimeField()
-    radius = models.PositiveIntegerField(default=70)  # meters
+
+    lecturer_latitude = models.FloatField(null=True, blank=True)
+    lecturer_longitude = models.FloatField(null=True, blank=True)
+    radius = models.PositiveIntegerField(default=50) 
+
     created_by = models.ForeignKey(User, on_delete=models.SET_NULL, null=True)
-    
+
     def __str__(self):
         return f"{self.course.course_code} - {self.date}"
+
 
 class AttendanceRecord(models.Model):
     session = models.ForeignKey(AttendanceSession, on_delete=models.CASCADE, related_name='records')
