@@ -4,11 +4,20 @@ from django.core.exceptions import PermissionDenied
 from .utils import calculate_distance
 from .models import AttendanceSession, AttendanceRecord
 
+# -----------------------------------------------
+# SCHOOL ABBREVIATION SESSION
+#-----------------------------------------------
+def get_school_abbreviation(school_name):
+    words = school_name.split()
+    if len(words) == 1:
+        return words[0][:3].upper()
+    return ''.join(word[0] for word in words).upper()
+
 
 # -------------------------------------------------
 # 1️⃣ GENERATE ATTENDANCE SESSION
 # -------------------------------------------------
-def generate_attendance_pin(course, lecturer, start_time, end_time):
+def generate_attendance_pin(course, lecturer, start_time, end_time, lat, lon, radius=50):
     """
     Generate a 6-digit PIN for an attendance session
     """
@@ -16,15 +25,23 @@ def generate_attendance_pin(course, lecturer, start_time, end_time):
     if course.school.attendance_control.attendance_locked:
         raise PermissionDenied("Attendance has been locked by school management")
 
-    pin = str(random.randint(100000, 999999))
+    # Ensure unique PIN
+    while True:
+        pin = str(random.randint(100000, 999999))
+        pin = f"{school_code}-{numbers}"
+        if not AttendanceSession.objects.filter(session_pin=pin).exists():
+            break
 
     session = AttendanceSession.objects.create(
         course=course,
         session_pin=pin,
         start_time=start_time,
         end_time=end_time,
+        lecturer_latitude=lat,
+        lecturer_longitude=lon,
+        radius=radius,
         created_by=lecturer,
-        radius=course.default_radius if hasattr(course, 'default_radius') else 70
+        is_closed=False
     )
     return session
 
@@ -33,43 +50,34 @@ def generate_attendance_pin(course, lecturer, start_time, end_time):
 # 2️⃣ MARK ATTENDANCE (GPS + FACE/FINGERPRINT)
 # -------------------------------------------------
 def mark_attendance(student, pin, student_lat, student_lon, verified_by):
-    # 🔐 Enforce verification method
     if verified_by not in ['face', 'fingerprint']:
         raise PermissionDenied("Face or Fingerprint verification required")
 
     try:
         session = AttendanceSession.objects.get(session_pin=pin)
     except AttendanceSession.DoesNotExist:
-        raise ValueError("Invalid PIN")
+        raise PermissionDenied("Invalid PIN")
 
-    # ❌ Prevent double attendance
+    if session.is_closed:
+        raise PermissionDenied("Attendance session is closed")
+
     if AttendanceRecord.objects.filter(session=session, student=student).exists():
-        raise ValueError("Attendance already marked")
+        raise PermissionDenied("Attendance already marked")
 
-    # ⏰ Time validation
     now = timezone.localtime().time()
     if not (session.start_time <= now <= session.end_time):
         raise PermissionDenied("Attendance window has closed")
 
-    # 📍 Lecturer / course location
-    lecturer_lat = session.course.latitude
-    lecturer_lon = session.course.longitude
-
-    # 📏 Radius (SESSION BASED ✔)
-    max_radius = session.radius
-
-    # 🧮 Distance check
     distance = calculate_distance(
-        lecturer_lat,
-        lecturer_lon,
+        session.lecturer_latitude,
+        session.lecturer_longitude,
         student_lat,
         student_lon
     )
 
-    if distance > max_radius:
+    if distance > session.radius:
         raise PermissionDenied("You are outside the attendance radius")
 
-    # ✅ Mark attendance
     return AttendanceRecord.objects.create(
         session=session,
         student=student,
@@ -83,19 +91,25 @@ def mark_attendance(student, pin, student_lat, student_lon, verified_by):
 # -------------------------------------------------
 def close_attendance_session(session):
     """
-    Automatically marks all unmarked students as ABSENT
+    Marks all students who didn't attend as ABSENT
     """
-    students = session.course.students.all()
 
-    for student in students:
+    if session.is_closed:
+        return
+
+    enrolled_students = [
+        enrollment.student for enrollment in session.course.enrollments.all()
+    ]
+
+    for student in enrolled_students:
         AttendanceRecord.objects.get_or_create(
             session=session,
             student=student,
-            defaults={
-                'status': 'absent',
-                'verified_by': 'none'
-            }
+            defaults={'status': 'absent'}
         )
+
+    session.is_closed = True
+    session.save()
 
 
 # -------------------------------------------------
@@ -105,7 +119,7 @@ def upload_excuse(student, session_id, file):
     try:
         session = AttendanceSession.objects.get(id=session_id)
     except AttendanceSession.DoesNotExist:
-        raise ValueError("Attendance session not found")
+        raise PermissionDenied("Attendance session not found")
 
     record, _ = AttendanceRecord.objects.get_or_create(
         student=student,
@@ -129,32 +143,9 @@ def get_attendance_percentage(student, course):
     )
 
     total_classes = course.total_classes_set
-    attended = records.filter(
-        status__in=['present', 'excused']
-    ).count()
+    attended = records.filter(status__in=['present', 'excused']).count()
 
     if total_classes == 0:
         return 0
 
     return round((attended / total_classes) * 100, 2)
-
-
-def close_attendance_session(session: AttendanceSession):
-    """
-    Marks all students who haven't attended as absent
-    """
-    # Get all enrolled students
-    enrolled_students = [e.student for e in session.course.enrollments.all()]
-
-    for student in enrolled_students:
-        record, created = AttendanceRecord.objects.get_or_create(
-            session=session,
-            student=student,
-            defaults={"status": "absent"}
-        )
-        if not created:
-            # Do not overwrite present/excused
-            continue
-
-    session.closed_at = timezone.now()
-    session.save()

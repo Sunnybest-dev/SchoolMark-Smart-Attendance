@@ -5,8 +5,9 @@ from accounts.models import StudentProfile
 
 class AttendanceSession(models.Model):
     course = models.ForeignKey(Course, on_delete=models.CASCADE, related_name='attendance_sessions')
-    session_pin = models.CharField(max_length=6)
+    session_pin = models.CharField(max_length=6, unique=True)
     session_qr = models.ImageField(upload_to='qr_codes/', blank=True, null=True)
+    is_closed = models.BooleanField(default=False)
 
     date = models.DateField(auto_now_add=True)
     start_time = models.TimeField()
@@ -26,7 +27,7 @@ class AttendanceRecord(models.Model):
     session = models.ForeignKey(AttendanceSession, on_delete=models.CASCADE, related_name='records')
     student = models.ForeignKey(StudentProfile, on_delete=models.CASCADE, related_name='attendance_records')
     verified_by = models.CharField(max_length=20, choices=(('face','Face'),('fingerprint','Fingerprint')))
-    status = models.CharField(max_length=20, choices=(('present','Present'),('absent','Absent')))
+    status = models.CharField(max_length=20, choices=(('present','Present'),('absent','Absent'),('excused','Excused'),))
     reason_document = models.FileField(upload_to='attendance_excuses/', blank=True, null=True)
     timestamp = models.DateTimeField(auto_now_add=True)
 

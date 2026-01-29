@@ -17,6 +17,8 @@ from .models import AttendanceSession, AttendanceRecord
 @api_view(['POST'])
 @permission_classes([IsAuthenticated])
 def generate_pin(request):
+    if not hasattr(request.user, 'lecturerprofile'):
+        return Response({"detail": "Lecturer access only"}, status=403)
     course_id = request.data.get('course_id')
     start_time = request.data.get('start_time')
     end_time = request.data.get('end_time')
@@ -40,6 +42,11 @@ def generate_pin(request):
 @api_view(['POST'])
 @permission_classes([IsAuthenticated])
 def mark_student_attendance(request):
+    if not hasattr(request.user, 'studentprofile'):
+        return Response(
+        {"detail": "Only students can mark attendance"},
+        status=403
+    )
     pin = request.data.get('pin')
     verified_by = request.data.get('verified_by', 'face')
     student_lat = request.data.get('latitude')
@@ -48,7 +55,9 @@ def mark_student_attendance(request):
 
     if not all([pin, student_lat, student_lon]):
         return Response({"detail": "PIN, latitude, and longitude are required"}, status=400)
-
+    if verified_by not in ['face', 'fingerprint']: 
+        return Response( {"detail": "verified_by must be 'face' or 'fingerprint'"}, status=400 )
+    
     try:
         record = mark_attendance(
             student,
@@ -73,6 +82,12 @@ def mark_student_attendance(request):
 @api_view(['POST'])
 @permission_classes([IsAuthenticated])
 def upload_excuse_file(request):
+    if not hasattr(request.user, 'lecturerprofile'):
+        return Response(
+        {"detail": "Only lecturers can upload excuses"},
+        status=403
+    )
+
     student_id = request.data.get('student_id')
     session_id = request.data.get('session_id')
     file = request.FILES.get('file')
