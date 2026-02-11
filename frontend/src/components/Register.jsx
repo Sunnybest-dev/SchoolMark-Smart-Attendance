@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { UserPlus, School, User, GraduationCap } from 'lucide-react';
 import axios from "axios";
 
@@ -12,9 +12,29 @@ export default function Register({ onRegister }) {
   const [lastName, setLastName] = useState("");
   const [schoolName, setSchoolName] = useState("");
   const [schoolAbbreviation, setSchoolAbbreviation] = useState("");
+  const [selectedSchool, setSelectedSchool] = useState("");
+  const [matricNumber, setMatricNumber] = useState("");
+  const [department, setDepartment] = useState("");
+  const [level, setLevel] = useState("");
+  const [schools, setSchools] = useState([]);
   const [error, setError] = useState("");
   const [success, setSuccess] = useState("");
   const [loading, setLoading] = useState(false);
+
+  useEffect(() => {
+    if (role === 'student') {
+      fetchSchools();
+    }
+  }, [role]);
+
+  const fetchSchools = async () => {
+    try {
+      const res = await axios.get('http://localhost:8000/api/accounts/schools/');
+      setSchools(res.data);
+    } catch (error) {
+      console.error('Error fetching schools');
+    }
+  };
 
   const handleRegister = async (e) => {
     e.preventDefault();
@@ -29,7 +49,7 @@ export default function Register({ onRegister }) {
     }
 
     try {
-      await axios.post("http://localhost:8000/api/register/", {
+      await axios.post("http://localhost:8000/api/accounts/register/", {
         username,
         email,
         password,
@@ -38,6 +58,10 @@ export default function Register({ onRegister }) {
         last_name: lastName,
         school_name: schoolName,
         school_abbreviation: schoolAbbreviation,
+        selected_school: selectedSchool,
+        matric_number: matricNumber,
+        department,
+        level
       });
 
       setSuccess("Registration successful! Redirecting to login...");
@@ -97,6 +121,41 @@ export default function Register({ onRegister }) {
                 <input type="text" value={lastName} onChange={(e) => setLastName(e.target.value)} required className="w-full px-4 py-3.5 border-2 border-gray-200 rounded-xl focus:ring-4 focus:ring-indigo-100 focus:border-indigo-500 transition outline-none" />
               </div>
             </div>
+
+            {role === 'student' && (
+              <div className="bg-blue-50 p-4 rounded-xl space-y-4">
+                <div>
+                  <label className="block text-sm font-semibold text-gray-700 mb-2">Select School</label>
+                  <select value={selectedSchool} onChange={(e) => setSelectedSchool(e.target.value)} required className="w-full px-4 py-3.5 border-2 border-gray-200 rounded-xl focus:ring-4 focus:ring-indigo-100 focus:border-indigo-500 transition outline-none">
+                    <option value="">Choose a school</option>
+                    {schools.map(school => (
+                      <option key={school.id} value={school.id}>{school.name}</option>
+                    ))}
+                  </select>
+                </div>
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-sm font-semibold text-gray-700 mb-2">Matric Number</label>
+                    <input type="text" value={matricNumber} onChange={(e) => setMatricNumber(e.target.value)} required className="w-full px-4 py-3.5 border-2 border-gray-200 rounded-xl focus:ring-4 focus:ring-indigo-100 focus:border-indigo-500 transition outline-none" />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-semibold text-gray-700 mb-2">Level</label>
+                    <select value={level} onChange={(e) => setLevel(e.target.value)} required className="w-full px-4 py-3.5 border-2 border-gray-200 rounded-xl focus:ring-4 focus:ring-indigo-100 focus:border-indigo-500 transition outline-none">
+                      <option value="">Select level</option>
+                      <option value="100">100</option>
+                      <option value="200">200</option>
+                      <option value="300">300</option>
+                      <option value="400">400</option>
+                      <option value="500">500</option>
+                    </select>
+                  </div>
+                </div>
+                <div>
+                  <label className="block text-sm font-semibold text-gray-700 mb-2">Department</label>
+                  <input type="text" value={department} onChange={(e) => setDepartment(e.target.value)} required className="w-full px-4 py-3.5 border-2 border-gray-200 rounded-xl focus:ring-4 focus:ring-indigo-100 focus:border-indigo-500 transition outline-none" />
+                </div>
+              </div>
+            )}
 
             {role === 'admin' && (
               <div className="grid grid-cols-2 gap-4 bg-indigo-50 p-4 rounded-xl">

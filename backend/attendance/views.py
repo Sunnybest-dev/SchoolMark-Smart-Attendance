@@ -19,9 +19,11 @@ from .models import AttendanceSession, AttendanceRecord
 def generate_pin(request):
     if not hasattr(request.user, 'lecturerprofile'):
         return Response({"detail": "Lecturer access only"}, status=403)
+    
     course_id = request.data.get('course_id')
-    start_time = request.data.get('start_time')
-    end_time = request.data.get('end_time')
+    lat = request.data.get('lecturer_latitude')
+    lon = request.data.get('lecturer_longitude')
+    radius = request.data.get('radius', 50)
 
     try:
         course = Course.objects.get(id=course_id)
@@ -29,7 +31,7 @@ def generate_pin(request):
         return Response({"detail": "Course not found"}, status=status.HTTP_404_NOT_FOUND)
 
     try:
-        session = generate_attendance_pin(course, request.user.lecturerprofile, start_time, end_time)
+        session = generate_attendance_pin(course, request.user.lecturerprofile, lat, lon, radius)
     except PermissionDenied as e:
         return Response({"detail": str(e)}, status=status.HTTP_403_FORBIDDEN)
 
@@ -117,10 +119,10 @@ def upload_excuse_file(request):
 # 4️⃣ Close Attendance Session (Admin / Auto-Absentees)
 # --------------------------
 @api_view(['POST'])
-@permission_classes([IsAdminUser])
-def close_attendance(request, session_id):
+@permission_classes([IsAuthenticated])
+def close_attendance(request, pin):
     try:
-        session = AttendanceSession.objects.get(id=session_id)
+        session = AttendanceSession.objects.get(session_pin=pin)
     except AttendanceSession.DoesNotExist:
         return Response({"detail": "Session not found"}, status=404)
 

@@ -10,5 +10,5 @@ urlpatterns = [
     path('generate-pin/', generate_pin, name='generate-pin'),
     path('mark/', mark_student_attendance, name='mark-attendance'),
     path('upload-excuse/', upload_excuse_file, name='upload-excuse'),
-    path('close/<int:session_id>/', close_attendance, name='close-attendance'),
+    path('close/<str:pin>/', close_attendance, name='close-attendance'),
 ]
