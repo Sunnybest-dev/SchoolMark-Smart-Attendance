@@ -36,6 +36,19 @@ class StudentProfile(models.Model):
         return f"{self.user.username} - {self.matric_number}"
 
 
+# AdminProfile for admin details
+class AdminProfile(models.Model):
+    user = models.OneToOneField(User, on_delete=models.CASCADE, related_name='admin_profile')
+    school = models.ForeignKey(School, on_delete=models.CASCADE, related_name='admin')
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        db_table = 'accounts_adminprofile'
+
+    def __str__(self):
+        return f"{self.user.username} - {self.school.name} Admin"
+
+
 def get_attendance_percentage(self, course):
     from attendance.models import AttendanceSession, AttendanceRecord  # import inside
     total_sessions = AttendanceSession.objects.filter(course=course).count()
