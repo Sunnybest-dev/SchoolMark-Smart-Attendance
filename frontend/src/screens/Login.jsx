@@ -21,8 +21,8 @@ export default function Login({ onLogin }) {
 
       const { access, refresh, user } = res.data;
 
-      localStorage.setItem("accessToken", access);
-      localStorage.setItem("refreshToken", refresh);
+      localStorage.setItem("access_token", access);
+      localStorage.setItem("refresh_token", refresh);
       localStorage.setItem("userRole", user.role);
 
       if (onLogin) onLogin(user.role);

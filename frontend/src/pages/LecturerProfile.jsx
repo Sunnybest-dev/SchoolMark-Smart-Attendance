@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { User, Mail, Phone, MapPin, Briefcase, ArrowLeft, Edit2, Save, X } from 'lucide-react';
+import { User, Mail, Phone, MapPin, Briefcase, ArrowLeft, Edit2, Save, X, BookOpen, Plus } from 'lucide-react';
 import axios from 'axios';
 
 export default function LecturerProfile() {
@@ -7,15 +7,46 @@ export default function LecturerProfile() {
   const [loading, setLoading] = useState(true);
   const [editing, setEditing] = useState(false);
   const [formData, setFormData] = useState({});
+  const [courses, setCourses] = useState([]);
+  const [showAddCourse, setShowAddCourse] = useState(false);
+  const [newCourse, setNewCourse] = useState({ course_code: '', course_title: '', total_classes_set: 30 });
 
   useEffect(() => {
     fetchProfile();
+    fetchCourses();
   }, []);
+
+  const fetchCourses = async () => {
+    try {
+      const token = localStorage.getItem('accessToken');
+      const res = await axios.get('http://localhost:8000/api/analytics/lecturer/', {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      setCourses(res.data.courses || []);
+    } catch (error) {
+      console.error('Error fetching courses:', error.response?.data);
+    }
+  };
+
+  const handleAddCourse = async () => {
+    try {
+      const token = localStorage.getItem('accessToken');
+      await axios.post('http://localhost:8000/api/courses/', newCourse, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      setShowAddCourse(false);
+      setNewCourse({ course_code: '', course_title: '', total_classes_set: 30 });
+      fetchCourses();
+      alert('Course added successfully');
+    } catch (error) {
+      alert('Failed to add course');
+    }
+  };
 
   const fetchProfile = async () => {
     try {
       const token = localStorage.getItem('accessToken');
-      const res = await axios.get('http://localhost:8000/api/accounts/profile/', {
+      const res = await axios.get('http://localhost:8000/api/profile/', {
         headers: { Authorization: `Bearer ${token}` }
       });
       setProfile(res.data);
@@ -26,7 +57,7 @@ export default function LecturerProfile() {
         phone_number: res.data.phone_number || ''
       });
     } catch (error) {
-      console.error('Error fetching profile');
+      console.error('Error fetching profile:', error.response?.data);
     } finally {
       setLoading(false);
     }
@@ -35,7 +66,7 @@ export default function LecturerProfile() {
   const handleSave = async () => {
     try {
       const token = localStorage.getItem('accessToken');
-      await axios.put('http://localhost:8000/api/accounts/profile/', formData, {
+      await axios.put('http://localhost:8000/api/profile/', formData, {
         headers: { Authorization: `Bearer ${token}` }
       });
       await fetchProfile();
@@ -82,7 +113,7 @@ export default function LecturerProfile() {
             )}
           </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
             <div className="flex items-center gap-3 p-4 bg-gray-50 rounded-xl">
               <Briefcase className="h-5 w-5 text-purple-600" />
               <div>
@@ -119,7 +150,7 @@ export default function LecturerProfile() {
               <MapPin className="h-5 w-5 text-purple-600" />
               <div>
                 <p className="text-sm text-gray-600">Department</p>
-                <p className="font-semibold">{profile?.department?.name || 'N/A'}</p>
+                <p className="font-semibold">{profile?.department || 'N/A'}</p>
               </div>
             </div>
 
@@ -129,6 +160,46 @@ export default function LecturerProfile() {
                 <p className="text-sm text-gray-600">School</p>
                 <p className="font-semibold">{profile?.school?.name || 'N/A'}</p>
               </div>
+            </div>
+          </div>
+
+          <div className="border-t pt-6">
+            <div className="flex items-center justify-between mb-4">
+              <h2 className="text-xl font-bold text-gray-900 flex items-center gap-2">
+                <BookOpen className="h-5 w-5 text-purple-600" />
+                My Courses
+              </h2>
+              <button onClick={() => setShowAddCourse(!showAddCourse)} className="flex items-center gap-2 px-4 py-2 bg-purple-600 text-white rounded-xl hover:bg-purple-700">
+                <Plus className="h-4 w-4" />{showAddCourse ? 'Cancel' : 'Add Course'}
+              </button>
+            </div>
+
+            {showAddCourse && (
+              <div className="bg-purple-50 p-4 rounded-xl mb-4 space-y-3">
+                <input value={newCourse.course_code} onChange={(e) => setNewCourse({...newCourse, course_code: e.target.value})} placeholder="Course Code (e.g., CSC101)" className="w-full px-4 py-2 border rounded-xl" />
+                <input value={newCourse.course_title} onChange={(e) => setNewCourse({...newCourse, course_title: e.target.value})} placeholder="Course Title" className="w-full px-4 py-2 border rounded-xl" />
+                <input type="number" value={newCourse.total_classes_set} onChange={(e) => setNewCourse({...newCourse, total_classes_set: e.target.value})} placeholder="Total Classes" className="w-full px-4 py-2 border rounded-xl" />
+                <button onClick={handleAddCourse} className="w-full bg-purple-600 text-white py-2 rounded-xl hover:bg-purple-700">Save Course</button>
+              </div>
+            )}
+
+            <div className="grid gap-3">
+              {courses.length === 0 ? (
+                <p className="text-gray-500 text-center py-8">No courses assigned yet</p>
+              ) : (
+                courses.map(course => (
+                  <div key={course.id} className="flex items-center justify-between p-4 bg-gray-50 rounded-xl">
+                    <div>
+                      <p className="font-semibold text-gray-900">{course.course_code}</p>
+                      <p className="text-sm text-gray-600">{course.course_title}</p>
+                    </div>
+                    <div className="text-right">
+                      <p className="text-sm text-gray-600">Classes: {course.classes_held}/{course.total_classes_set}</p>
+                      <p className="text-sm font-semibold text-purple-600">{course.completion_percent}% Complete</p>
+                    </div>
+                  </div>
+                ))
+              )}
             </div>
           </div>
         </div>

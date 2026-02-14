@@ -18,11 +18,16 @@ def get_school_abbreviation(school_name):
 # 1️⃣ GENERATE ATTENDANCE SESSION
 # -------------------------------------------------
 def generate_attendance_pin(course, lecturer, lat, lon, radius=50):
-    if course.school.attendance_control.attendance_locked:
-        raise PermissionDenied("Attendance has been locked by school management")
+    try:
+        if course.school.attendance_control.attendance_locked:
+            raise PermissionDenied("Attendance has been locked by school management")
+    except:
+        pass
 
+    school_code = course.school.short_name.upper()
     while True:
-        pin = str(random.randint(100000, 999999))
+        numbers = str(random.randint(1000, 9999))
+        pin = f"{school_code}-{numbers}"
         if not AttendanceSession.objects.filter(session_pin=pin).exists():
             break
 

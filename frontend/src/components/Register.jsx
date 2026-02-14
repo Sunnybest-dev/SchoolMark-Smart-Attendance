@@ -14,6 +14,8 @@ export default function Register({ onRegister }) {
   const [schoolAbbreviation, setSchoolAbbreviation] = useState("");
   const [selectedSchool, setSelectedSchool] = useState("");
   const [matricNumber, setMatricNumber] = useState("");
+  const [staffId, setStaffId] = useState("");
+  const [phoneNumber, setPhoneNumber] = useState("");
   const [department, setDepartment] = useState("");
   const [level, setLevel] = useState("");
   const [schools, setSchools] = useState([]);
@@ -22,14 +24,14 @@ export default function Register({ onRegister }) {
   const [loading, setLoading] = useState(false);
 
   useEffect(() => {
-    if (role === 'student') {
+    if (role === 'student' || role === 'lecturer') {
       fetchSchools();
     }
   }, [role]);
 
   const fetchSchools = async () => {
     try {
-      const res = await axios.get('http://localhost:8000/api/accounts/schools/');
+      const res = await axios.get('http://localhost:8000/api/schools/');
       setSchools(res.data);
     } catch (error) {
       console.error('Error fetching schools');
@@ -49,7 +51,7 @@ export default function Register({ onRegister }) {
     }
 
     try {
-      await axios.post("http://localhost:8000/api/accounts/register/", {
+      await axios.post("http://localhost:8000/api/register/", {
         username,
         email,
         password,
@@ -60,6 +62,8 @@ export default function Register({ onRegister }) {
         school_abbreviation: schoolAbbreviation,
         selected_school: selectedSchool,
         matric_number: matricNumber,
+        staff_id: staffId,
+        phone_number: phoneNumber,
         department,
         level
       });
@@ -69,7 +73,8 @@ export default function Register({ onRegister }) {
         if (onRegister) onRegister();
       }, 2000);
     } catch (err) {
-      setError(err.response?.data?.detail || "Registration failed");
+      setError(err.response?.data?.detail || err.response?.data?.error || JSON.stringify(err.response?.data) || "Registration failed");
+      console.error('Registration error:', err.response?.data);
     } finally {
       setLoading(false);
     }
@@ -121,6 +126,30 @@ export default function Register({ onRegister }) {
                 <input type="text" value={lastName} onChange={(e) => setLastName(e.target.value)} required className="w-full px-4 py-3.5 border-2 border-gray-200 rounded-xl focus:ring-4 focus:ring-indigo-100 focus:border-indigo-500 transition outline-none" />
               </div>
             </div>
+
+            {role === 'lecturer' && (
+              <div className="bg-purple-50 p-4 rounded-xl space-y-4">
+                <div>
+                  <label className="block text-sm font-semibold text-gray-700 mb-2">Select School</label>
+                  <select value={selectedSchool} onChange={(e) => setSelectedSchool(e.target.value)} required className="w-full px-4 py-3.5 border-2 border-gray-200 rounded-xl focus:ring-4 focus:ring-indigo-100 focus:border-indigo-500 transition outline-none">
+                    <option value="">Choose a school</option>
+                    {schools.map(school => (
+                      <option key={school.id} value={school.id}>{school.name}</option>
+                    ))}
+                  </select>
+                </div>
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-sm font-semibold text-gray-700 mb-2">Phone Number</label>
+                    <input type="tel" value={phoneNumber} onChange={(e) => setPhoneNumber(e.target.value)} className="w-full px-4 py-3.5 border-2 border-gray-200 rounded-xl focus:ring-4 focus:ring-indigo-100 focus:border-indigo-500 transition outline-none" />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-semibold text-gray-700 mb-2">Department</label>
+                    <input type="text" value={department} onChange={(e) => setDepartment(e.target.value)} className="w-full px-4 py-3.5 border-2 border-gray-200 rounded-xl focus:ring-4 focus:ring-indigo-100 focus:border-indigo-500 transition outline-none" />
+                  </div>
+                </div>
+              </div>
+            )}
 
             {role === 'student' && (
               <div className="bg-blue-50 p-4 rounded-xl space-y-4">

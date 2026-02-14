@@ -12,9 +12,25 @@ export default function MarkAttendance() {
   const [error, setError] = useState('');
   const videoRef = useRef(null);
 
-  const handlePinSubmit = (e) => {
+  const handlePinSubmit = async (e) => {
     e.preventDefault();
-    if (pin.length === 6) setStep(2);
+    setError('');
+    if (pin.length >= 6) {
+      setLoading(true);
+      try {
+        const token = localStorage.getItem('accessToken');
+        await axios.post('http://localhost:8000/api/attendance/verify-pin/', {
+          pin
+        }, { headers: { Authorization: `Bearer ${token}` } });
+        setStep(2);
+      } catch (error) {
+        setError(error.response?.data?.detail || 'Invalid PIN');
+      } finally {
+        setLoading(false);
+      }
+    } else {
+      setError('Please enter a valid PIN');
+    }
   };
 
   const verifyLocation = async () => {
@@ -66,9 +82,9 @@ export default function MarkAttendance() {
               <MapPin className="h-16 w-16 mx-auto text-blue-600 mb-4" />
               <h2 className="text-2xl font-bold mb-4">Enter PIN</h2>
               <form onSubmit={handlePinSubmit}>
-                <input type="text" value={pin} onChange={(e) => setPin(e.target.value.toUpperCase())} maxLength={6} className="w-full text-center text-2xl font-mono px-4 py-3 border-2 rounded-xl mb-4" placeholder="XXXXXX" />
+                <input type="text" value={pin} onChange={(e) => setPin(e.target.value.toUpperCase())} maxLength={15} className="w-full text-center text-2xl font-mono px-4 py-3 border-2 rounded-xl mb-4" placeholder="CUA-1234" />
                 {error && <div className="bg-red-50 border-2 border-red-200 text-red-700 px-4 py-3 rounded-xl text-sm mb-4">{error}</div>}
-                <button type="submit" className="w-full bg-blue-600 text-white py-3 rounded-xl font-semibold">Continue</button>
+                <button type="submit" disabled={loading} className="w-full bg-blue-600 text-white py-3 rounded-xl font-semibold disabled:opacity-50">{loading ? 'Verifying...' : 'Continue'}</button>
               </form>
             </div>
           )}

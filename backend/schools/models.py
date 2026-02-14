@@ -17,6 +17,8 @@ class Course(models.Model):
     school = models.ForeignKey(School, on_delete=models.CASCADE, related_name='courses')
     course_code = models.CharField(max_length=20)
     course_title = models.CharField(max_length=255)
+    department = models.CharField(max_length=100, blank=True)
+    level = models.CharField(max_length=20, blank=True)  # e.g. 100, 200, 300
     lecturer = models.ForeignKey(
         User,
         on_delete=models.SET_NULL,
@@ -32,6 +34,15 @@ class Course(models.Model):
 
     def __str__(self):
         return f"{self.course_code} - {self.course_title}"
+    
+    def classes_held(self):
+        return self.attendance_sessions.count()
+    
+    def completion_percentage(self):
+        if self.total_classes_set == 0:
+            return 0
+        return round((self.classes_held() / self.total_classes_set) * 100, 2)
+
 class Enrollment(models.Model):
     student = models.ForeignKey(
         User,
@@ -52,13 +63,6 @@ class Enrollment(models.Model):
 
     def __str__(self):
         return f"{self.student.username} → {self.course.course_code}"
-def classes_held(self):
-    return self.attendance_sessions.count()
-
-def completion_percentage(self):
-    if self.total_classes_set == 0:
-        return 0
-    return round((self.classes_held() / self.total_classes_set) * 100, 2)
 
 class AttendanceControl(models.Model):
     school = models.OneToOneField(

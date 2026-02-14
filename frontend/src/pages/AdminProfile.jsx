@@ -15,7 +15,7 @@ export default function AdminProfile() {
   const fetchProfile = async () => {
     try {
       const token = localStorage.getItem('accessToken');
-      const res = await axios.get('http://localhost:8000/api/accounts/profile/', {
+      const res = await axios.get('http://localhost:8000/api/profile/', {
         headers: { Authorization: `Bearer ${token}` }
       });
       setProfile(res.data);
@@ -35,7 +35,7 @@ export default function AdminProfile() {
   const handleSave = async () => {
     try {
       const token = localStorage.getItem('accessToken');
-      await axios.put('http://localhost:8000/api/accounts/profile/', formData, {
+      await axios.put('http://localhost:8000/api/profile/', formData, {
         headers: { Authorization: `Bearer ${token}` }
       });
       await fetchProfile();

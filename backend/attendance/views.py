@@ -11,8 +11,66 @@ from .services import generate_attendance_pin, upload_excuse, mark_attendance, c
 from .models import AttendanceSession, AttendanceRecord
 
 
+@api_view(['GET'])
+@permission_classes([IsAuthenticated])
+def get_attendance_history(request):
+    student = request.user.studentprofile
+    records = AttendanceRecord.objects.filter(student=student).select_related('session__course').order_by('-marked_at')
+    
+    data = [{
+        'id': r.id,
+        'course_code': r.session.course.course_code,
+        'course_title': r.session.course.course_title,
+        'status': r.status,
+        'marked_at': r.marked_at,
+        'verified_by': r.verified_by
+    } for r in records]
+    
+    return Response(data)
+
+
+@api_view(['GET'])
+@permission_classes([IsAuthenticated])
+def get_course_sessions(request, course_id):
+    if not hasattr(request.user, 'lecturerprofile'):
+        return Response({"detail": "Lecturer access only"}, status=403)
+    sessions = AttendanceSession.objects.filter(course_id=course_id).order_by('-created_at')
+    data = [{'id': s.id, 'session_pin': s.session_pin, 'created_at': s.created_at, 'is_closed': s.is_closed} for s in sessions]
+    return Response(data)
+
+
+@api_view(['GET'])
+@permission_classes([IsAuthenticated])
+def get_absent_students(request, session_id):
+    if not hasattr(request.user, 'lecturerprofile'):
+        return Response({"detail": "Lecturer access only"}, status=403)
+    from accounts.models import StudentProfile
+    session = AttendanceSession.objects.get(id=session_id)
+    enrolled = session.course.students.all()
+    present_ids = AttendanceRecord.objects.filter(session=session, status='present').values_list('student_id', flat=True)
+    absent = enrolled.exclude(id__in=present_ids)
+    data = [{'id': s.id, 'matric_number': s.matric_number, 'name': s.user.get_full_name()} for s in absent]
+    return Response(data)
+
+
 # --------------------------
-# 1️⃣ Generate PIN
+# 1️⃣ Verify PIN
+# --------------------------
+@api_view(['POST'])
+@permission_classes([IsAuthenticated])
+def verify_pin(request):
+    pin = request.data.get('pin')
+    try:
+        session = AttendanceSession.objects.get(session_pin=pin)
+        if session.is_closed:
+            return Response({"detail": "Attendance session is closed"}, status=403)
+        return Response({"message": "Valid PIN"})
+    except AttendanceSession.DoesNotExist:
+        return Response({"detail": "Invalid PIN"}, status=404)
+
+
+# --------------------------
+# 2️⃣ Generate PIN
 # --------------------------
 @api_view(['POST'])
 @permission_classes([IsAuthenticated])
@@ -85,34 +143,57 @@ def mark_student_attendance(request):
 @permission_classes([IsAuthenticated])
 def upload_excuse_file(request):
     if not hasattr(request.user, 'lecturerprofile'):
-        return Response(
-        {"detail": "Only lecturers can upload excuses"},
-        status=403
-    )
+        return Response({"detail": "Only lecturers can upload excuses"}, status=403)
 
-    student_id = request.data.get('student_id')
-    session_id = request.data.get('session_id')
+    matric_number = request.data.get('matric_number')
+    student_name = request.data.get('student_name')
+    course_code = request.data.get('course_code')
     file = request.FILES.get('file')
 
-    if not all([student_id, session_id, file]):
-        return Response({"detail": "student_id, session_id, and file are required"}, status=400)
+    if not all([matric_number, student_name, course_code, file]):
+        return Response({"detail": "All fields are required"}, status=400)
 
     from accounts.models import StudentProfile
+    from .models import ExcuseRequest
+    
     try:
-        student = StudentProfile.objects.get(id=student_id)
+        student = StudentProfile.objects.get(matric_number=matric_number)
+        course = Course.objects.get(course_code=course_code)
+        
+        # Find most recent absent session for this student and course
+        absent_record = AttendanceRecord.objects.filter(
+            student=student,
+            session__course=course,
+            status='absent'
+        ).order_by('-session__date').first()
+        
+        if absent_record:
+            # Mark as excused/present
+            absent_record.status = 'excused'
+            absent_record.verified_by = 'excuse'
+            absent_record.reason_document = file
+            absent_record.save()
+            
+            # Create excuse request for admin review
+            ExcuseRequest.objects.create(
+                student=student,
+                course_code=course_code,
+                student_name=student_name,
+                matric_number=matric_number,
+                excuse_file=file,
+                submitted_by=request.user,
+                attendance_record=absent_record,
+                status='approved'
+            )
+            
+            return Response({"message": "Excuse submitted and student marked present"})
+        else:
+            return Response({"detail": "No absent record found for this student in this course"}, status=404)
+            
     except StudentProfile.DoesNotExist:
         return Response({"detail": "Student not found"}, status=404)
-
-    try:
-        record = upload_excuse(student, session_id, file)
-    except ValueError as e:
-        return Response({"detail": str(e)}, status=400)
-
-    return Response({
-        "message": "Excuse uploaded successfully",
-        "student": student.user.get_full_name(),
-        "status": record.status
-    })
+    except Course.DoesNotExist:
+        return Response({"detail": "Course not found"}, status=404)
 
 
 # --------------------------
@@ -128,3 +209,49 @@ def close_attendance(request, pin):
 
     close_attendance_session(session)
     return Response({"message": f"Session {session.session_pin} closed. Absentees marked."})
+
+
+# --------------------------
+# Admin: Get Excuse Requests
+# --------------------------
+@api_view(['GET'])
+@permission_classes([IsAuthenticated])
+def get_excuse_requests(request):
+    if not hasattr(request.user, 'adminprofile'):
+        return Response({"detail": "Admin access only"}, status=403)
+    
+    from .models import ExcuseRequest
+    requests = ExcuseRequest.objects.all().order_by('-created_at')
+    data = [{
+        'id': r.id,
+        'student_name': r.student_name,
+        'matric_number': r.matric_number,
+        'course_code': r.course_code,
+        'excuse_file': r.excuse_file.url if r.excuse_file else None,
+        'submitted_by': r.submitted_by.get_full_name(),
+        'status': r.status,
+        'created_at': r.created_at
+    } for r in requests]
+    return Response(data)
+
+
+# --------------------------
+# Admin: Cancel Excuse
+# --------------------------
+@api_view(['POST'])
+@permission_classes([IsAuthenticated])
+def cancel_excuse(request, excuse_id):
+    if not hasattr(request.user, 'adminprofile'):
+        return Response({"detail": "Admin access only"}, status=403)
+    
+    from .models import ExcuseRequest
+    try:
+        excuse = ExcuseRequest.objects.get(id=excuse_id)
+        if excuse.attendance_record:
+            excuse.attendance_record.status = 'absent'
+            excuse.attendance_record.save()
+        excuse.status = 'rejected'
+        excuse.save()
+        return Response({"message": "Excuse cancelled and attendance reverted to absent"})
+    except ExcuseRequest.DoesNotExist:
+        return Response({"detail": "Excuse request not found"}, status=404)

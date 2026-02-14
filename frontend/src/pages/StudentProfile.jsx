@@ -15,7 +15,7 @@ export default function StudentProfile() {
   const fetchProfile = async () => {
     try {
       const token = localStorage.getItem('accessToken');
-      const res = await axios.get('http://localhost:8000/api/accounts/profile/', {
+      const res = await axios.get('http://localhost:8000/api/profile/', {
         headers: { Authorization: `Bearer ${token}` }
       });
       setProfile(res.data);
@@ -35,7 +35,7 @@ export default function StudentProfile() {
   const handleSave = async () => {
     try {
       const token = localStorage.getItem('accessToken');
-      await axios.put('http://localhost:8000/api/accounts/profile/', formData, {
+      await axios.put('http://localhost:8000/api/profile/', formData, {
         headers: { Authorization: `Bearer ${token}` }
       });
       await fetchProfile();
@@ -119,7 +119,7 @@ export default function StudentProfile() {
               <MapPin className="h-5 w-5 text-blue-600" />
               <div>
                 <p className="text-sm text-gray-600">Department</p>
-                <p className="font-semibold">{profile?.department?.name || 'N/A'}</p>
+                <p className="font-semibold">{profile?.department || 'N/A'}</p>
               </div>
             </div>
 

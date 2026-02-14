@@ -11,16 +11,20 @@ import CourseManagement from "./pages/CourseManagement";
 import StudentProfile from "./pages/StudentProfile";
 import LecturerProfile from "./pages/LecturerProfile";
 import AdminProfile from "./pages/AdminProfile";
+import AttendanceHistory from "./pages/AttendanceHistory";
+import ExcuseManagement from "./pages/ExcuseManagement";
+import ExcuseRequests from "./pages/ExcuseRequests";
+import UserManagement from "./pages/UserManagement";
 import Navbar from "./components/Navbar";
 
 function App() {
-  const [loggedIn, setLoggedIn] = useState(!!localStorage.getItem("accessToken"));
+  const [loggedIn, setLoggedIn] = useState(!!localStorage.getItem("access_token"));
   const [showRegister, setShowRegister] = useState(false);
   const [userRole, setUserRole] = useState(localStorage.getItem("userRole") || "student");
 
   const handleLogout = () => {
-    localStorage.removeItem("accessToken");
-    localStorage.removeItem("refreshToken");
+    localStorage.removeItem("access_token");
+    localStorage.removeItem("refresh_token");
     localStorage.removeItem("userRole");
     setLoggedIn(false);
   };
@@ -40,12 +44,16 @@ function App() {
             <Routes>
               <Route path="/student" element={userRole === 'student' ? <StudentDashboard onLogout={handleLogout} /> : <Navigate to="/" />} />
               <Route path="/student/mark-attendance" element={userRole === 'student' ? <MarkAttendance /> : <Navigate to="/" />} />
+              <Route path="/student/history" element={userRole === 'student' ? <AttendanceHistory /> : <Navigate to="/" />} />
               <Route path="/student/profile" element={userRole === 'student' ? <StudentProfile /> : <Navigate to="/" />} />
               <Route path="/lecturer" element={userRole === 'lecturer' ? <LecturerDashboard onLogout={handleLogout} /> : <Navigate to="/" />} />
               <Route path="/lecturer/generate-pin" element={userRole === 'lecturer' ? <GeneratePin /> : <Navigate to="/" />} />
+              <Route path="/lecturer/excuse" element={userRole === 'lecturer' ? <ExcuseManagement /> : <Navigate to="/" />} />
               <Route path="/lecturer/profile" element={userRole === 'lecturer' ? <LecturerProfile /> : <Navigate to="/" />} />
               <Route path="/admin" element={userRole === 'admin' ? <AdminDashboard onLogout={handleLogout} /> : <Navigate to="/" />} />
               <Route path="/admin/courses" element={userRole === 'admin' ? <CourseManagement /> : <Navigate to="/" />} />
+              <Route path="/admin/excuses" element={userRole === 'admin' ? <ExcuseRequests /> : <Navigate to="/" />} />
+              <Route path="/admin/users" element={userRole === 'admin' ? <UserManagement /> : <Navigate to="/" />} />
               <Route path="/admin/profile" element={userRole === 'admin' ? <AdminProfile /> : <Navigate to="/" />} />
               <Route path="/" element={<Navigate to={`/${userRole}`} />} />
             </Routes>

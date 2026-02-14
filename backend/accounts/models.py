@@ -24,12 +24,12 @@ class UserProfile(models.Model):
 
 # StudentProfile for student details
 class StudentProfile(models.Model):
-    user = models.OneToOneField(User, on_delete=models.CASCADE, related_name='student_profile')
+    user = models.OneToOneField(User, on_delete=models.CASCADE, related_name='studentprofile')
     school = models.ForeignKey(School, on_delete=models.CASCADE, related_name='students')
     matric_number = models.CharField(max_length=20, unique=True)  # given by school
     department = models.CharField(max_length=100)  # mandatory
     level = models.CharField(max_length=10)  # mandatory, e.g., 100, 200, 300
-    phone = models.CharField(max_length=15, blank=True)
+    phone_number = models.CharField(max_length=15, blank=True)
     created_at = models.DateTimeField(auto_now_add=True)
 
     def __str__(self):
@@ -38,7 +38,7 @@ class StudentProfile(models.Model):
 
 # AdminProfile for admin details
 class AdminProfile(models.Model):
-    user = models.OneToOneField(User, on_delete=models.CASCADE, related_name='admin_profile')
+    user = models.OneToOneField(User, on_delete=models.CASCADE, related_name='adminprofile')
     school = models.ForeignKey(School, on_delete=models.CASCADE, related_name='admin')
     created_at = models.DateTimeField(auto_now_add=True)
 
@@ -47,6 +47,19 @@ class AdminProfile(models.Model):
 
     def __str__(self):
         return f"{self.user.username} - {self.school.name} Admin"
+
+
+# LecturerProfile for lecturer details
+class LecturerProfile(models.Model):
+    user = models.OneToOneField(User, on_delete=models.CASCADE, related_name='lecturerprofile')
+    school = models.ForeignKey(School, on_delete=models.CASCADE, related_name='lecturers')
+    staff_id = models.CharField(max_length=20, unique=True)
+    department = models.CharField(max_length=100, blank=True)
+    phone_number = models.CharField(max_length=15, blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    def __str__(self):
+        return f"{self.user.username} - {self.staff_id}"
 
 
 def get_attendance_percentage(self, course):

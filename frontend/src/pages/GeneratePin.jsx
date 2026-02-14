@@ -22,7 +22,7 @@ export default function GeneratePin() {
       });
       setCourses(res.data.courses || []);
     } catch (error) {
-      console.error('Error fetching courses');
+      console.error('Error fetching courses:', error.response?.data);
     }
   };
 
@@ -42,7 +42,8 @@ export default function GeneratePin() {
       setPin(res.data.pin);
       setSessionActive(true);
     } catch (error) {
-      alert('Failed to generate PIN');
+      console.error('Generate PIN error:', error.response?.data);
+      alert(error.response?.data?.detail || 'Failed to generate PIN');
     } finally {
       setLoading(false);
     }
